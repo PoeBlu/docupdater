@@ -7,12 +7,12 @@ from docupdater.helpers.helpers import set_properties, remove_sha_prefix, conver
 @pytest.mark.docker
 def test_set_properties(hello_world_container, hello_world_image):
     new = set_properties(hello_world_container, hello_world_image)
-    assert new.get("labels", dict()).get("test") == "12345"
-    assert len(new.get("labels", dict()).keys()) == 1
+    assert new.get("labels", {}).get("test") == "12345"
+    assert len(new.get("labels", {}).keys()) == 1
     assert new.get("name") == hello_world_container.name
     assert new.get("name") == hello_world_container.name
     assert new.get("hostname") == "hello-world-test"
-    assert all([env for env in new.get("environment") if env == "env1=test1"])
+    assert all(env for env in new.get("environment") if env == "env1=test1")
 
 
 @pytest.mark.docker
@@ -32,8 +32,11 @@ def test_set_properties_with_self_update(hello_world_image):
     container = client.api.create_container("hello-world:latest", **container_dict)
 
     new = set_properties(client.containers.get(container.get("Id")), hello_world_image, self_update=True)
-    assert new.get("labels", dict()).get("test") == "12345"
-    assert new.get("labels", dict()).get("docupdater.updater_port") == "4567,tcp:9876,tcp"
+    assert new.get("labels", {}).get("test") == "12345"
+    assert (
+        new.get("labels", {}).get("docupdater.updater_port")
+        == "4567,tcp:9876,tcp"
+    )
     assert not new.get("ports")
 
     container_dict["labels"] = new.get("labels")
@@ -42,7 +45,7 @@ def test_set_properties_with_self_update(hello_world_image):
     new2 = set_properties(client.containers.get(container2.get("Id")), hello_world_image, self_update=True)
     assert new2.get("labels").get("test") == "12345"
     assert new2.get("labels").get("docupdater.updater_port") is None
-    assert all([(a, b) for a, b in new2.get("ports") if a in [4567, 9876]])
+    assert all((a, b) for a, b in new2.get("ports") if a in [4567, 9876])
 
 
 def test_remove_sha():

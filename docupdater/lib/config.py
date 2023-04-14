@@ -98,7 +98,7 @@ class Config(object):
         self.filtered_strings = list(filter(None, filtered_strings))
         # take lists inside of list and append to list
         for index, value in enumerate(self.filtered_strings, 0):
-            if isinstance(value, list) or isinstance(value, tuple):
+            if isinstance(value, (list, tuple)):
                 self.filtered_strings.extend(self.filtered_strings.pop(index))
                 self.filtered_strings.insert(index, self.filtered_strings[-1:][0])
         # Added matching for ports
@@ -108,9 +108,10 @@ class Config(object):
         tcp_sockets = [string.split('//')[1] for string in self.filtered_strings if '//' in string]
         self.filtered_strings.extend(tcp_sockets)
         # Get JUST hostname from tcp//unix
-        for socket in getattr(self, 'docker_sockets'):
-            self.filtered_strings.append(socket.split('//')[1].split(':')[0])
-
+        self.filtered_strings.extend(
+            socket.split('//')[1].split(':')[0]
+            for socket in getattr(self, 'docker_sockets')
+        )
         for handler in self.logger.handlers:
             handler.addFilter(BlacklistFilter(set(self.filtered_strings)))
 
@@ -147,8 +148,7 @@ class Config(object):
             dir_path = Path().absolute()
             template_file = dir_path.joinpath("docupdater/templates/notification.j2")
 
-        if Path(template_file).exists():
-            with open(template_file) as f:
-                return f.read()
-        else:
+        if not Path(template_file).exists():
             raise AttributeError(f"Template file {template_file} not found")
+        with open(template_file) as f:
+            return f.read()

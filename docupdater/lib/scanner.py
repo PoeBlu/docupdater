@@ -64,18 +64,16 @@ class Scanner(object):
                 self.config.disable_services_check = True
         except Exception as e:
             error_str = str(e).lower()
-            if "this node is not a swarm manager" in error_str:
-                if "worker nodes" in error_str:
-                    raise EnvironmentError(
-                        "Your running on a swarm worker, it isn't working. You must add placement constraints. "
-                        "See docs at https://github.com/docupdater/docupdater for help."
-                    )
-                else:
-                    self.logger.info("Your aren't running in swarm mode, skip services check.")
-                    self.config.disable_services_check = True
-            else:
+            if "this node is not a swarm manager" not in error_str:
                 raise e
 
+            if "worker nodes" in error_str:
+                raise EnvironmentError(
+                    "Your running on a swarm worker, it isn't working. You must add placement constraints. "
+                    "See docs at https://github.com/docupdater/docupdater for help."
+                )
+            self.logger.info("Your aren't running in swarm mode, skip services check.")
+            self.config.disable_services_check = True
         if self.config.disable_containers_check and self.config.disable_services_check:
             raise AttributeError("Error you can't disable all monitoring (containers/services).")
 
@@ -104,17 +102,18 @@ class Scanner(object):
                 self.logger.debug("no new version for %s", container_or_service.name)
 
     def self_update(self):
-        if not self.config.disable_containers_check:
-            # Removing old docupdater
-            self.logger.debug('Looking for old docupdater on %s', self.socket)
-            for container in self.client.containers.list(all=True, ignore_removed=True):
-                if container.name.endswith("_old_docupdater"):
-                    self.logger.debug('Stopping and deleting %s', container.name)
-                    container.stop()
-                    container.remove()
-            # Fix docupdater if they need exposed port
-            for container in self.client.containers.list(all=True, ignore_removed=True):
-                if container.labels.get("docupdater.updater_port"):
-                    self.logger.info('Recreate docupdater container with exposed ports')
-                    Container(self.docker, container)
-                    container.update()
+        if self.config.disable_containers_check:
+            return
+        # Removing old docupdater
+        self.logger.debug('Looking for old docupdater on %s', self.socket)
+        for container in self.client.containers.list(all=True, ignore_removed=True):
+            if container.name.endswith("_old_docupdater"):
+                self.logger.debug('Stopping and deleting %s', container.name)
+                container.stop()
+                container.remove()
+        # Fix docupdater if they need exposed port
+        for container in self.client.containers.list(all=True, ignore_removed=True):
+            if container.labels.get("docupdater.updater_port"):
+                self.logger.info('Recreate docupdater container with exposed ports')
+                Container(self.docker, container)
+                container.update()

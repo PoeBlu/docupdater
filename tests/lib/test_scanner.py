@@ -45,14 +45,22 @@ def test_scanner_scan_monitored(scanner):
     monitored = scanner.scan_monitored()
 
     assert len([object.name for object in monitored if object.name in ["Test1", "Test3"]]) == 2
-    assert len([object.name for object in monitored if object.name in ["Test2"]]) == 0
+    assert not [object.name for object in monitored if object.name in ["Test2"]]
     assert len([object.name for object in monitored if object.name in ["TestService1", "TestService2"]]) == 2
 
     scanner.config.label = True
     monitored = scanner.scan_monitored()
     assert len([object.name for object in monitored if object.name in ["Test3"]]) == 1
-    assert len([object.name for object in monitored if object.name in ["Test1", "Test2"]]) == 0
-    assert len([object.name for object in monitored if object.name in ["TestService1", "TestService2"]]) == 0
+    assert not [
+        object.name
+        for object in monitored
+        if object.name in ["Test1", "Test2"]
+    ]
+    assert not [
+        object.name
+        for object in monitored
+        if object.name in ["TestService1", "TestService2"]
+    ]
 
 
 @pytest.mark.docker

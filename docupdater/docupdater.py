@@ -141,20 +141,19 @@ def cli(docker_sockets, docker_tls, docker_tls_verify, interval, cron, log_level
                     day_of_week=config.cron[4],
                     misfire_grace_time=20
                 )
+            elif config.run_once:
+                scheduler.add_job(scanner.update, name=f'Run Once container update for {socket}')
             else:
-                if config.run_once:
-                    scheduler.add_job(scanner.update, name=f'Run Once container update for {socket}')
-                else:
-                    scheduler.add_job(
-                        scanner.update,
-                        name=f'Initial run interval container update for {socket}'
-                    )
-                    scheduler.add_job(
-                        scanner.update,
-                        name=f'Interval container update for {socket}',
-                        trigger='interval', seconds=config.interval,
-                        misfire_grace_time=20
-                    )
+                scheduler.add_job(
+                    scanner.update,
+                    name=f'Initial run interval container update for {socket}'
+                )
+                scheduler.add_job(
+                    scanner.update,
+                    name=f'Interval container update for {socket}',
+                    trigger='interval', seconds=config.interval,
+                    misfire_grace_time=20
+                )
         except ConnectionError:
             log.logger.error("Could not connect to socket %s. Check your config", config.socket)
 

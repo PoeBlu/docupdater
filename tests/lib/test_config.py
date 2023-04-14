@@ -16,7 +16,11 @@ def test_config(config):
         return value == getattr(config, key)
 
     assert config.hostname == DefaultConfig.hostname
-    assert all([check(key, value) for key, value in DefaultConfig.__dict__.items() if "__" not in key])
+    assert all(
+        check(key, value)
+        for key, value in DefaultConfig.__dict__.items()
+        if "__" not in key
+    )
     assert config.template is not None
     assert config.auth_json is None
 

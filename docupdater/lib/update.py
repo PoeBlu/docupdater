@@ -80,14 +80,9 @@ class Container(AbstractObject):
         image = self.container.attrs['Config']['Image']
         if ":" in image:
             return image.split(":", 1)[1]
-        else:
-            tags = self.client.images.get(self.get_image_name()).tags
-            if tags:
-                tag = tags[0]
-                if ":" in tag:
-                    return tag.split(":", 1)[1]
-                else:
-                    return "latest"
+        if tags := self.client.images.get(self.get_image_name()).tags:
+            tag = tags[0]
+            return tag.split(":", 1)[1] if ":" in tag else "latest"
 
     @property
     def container(self):
@@ -97,20 +92,18 @@ class Container(AbstractObject):
         return (self._current_id or "")[10:]
 
     def get_latest_id(self):
-        if self._latest_image:
-            return get_id_from_image(self._latest_image)[10:]
-        return ""
+        return get_id_from_image(self._latest_image)[10:] if self._latest_image else ""
 
     def is_docupdater(self):
-        docupdater = "docupdater" in self.container.attrs.get("Config", dict()).get("Image", self.name)
+        docupdater = "docupdater" in self.container.attrs.get("Config", {}).get(
+            "Image", self.name
+        )
         if not docupdater:
             for history in self.container.image.history():
-                if "docupdater" in (history.get("Tags", list()) or list()):
+                if "docupdater" in (history.get("Tags", []) or []):
                     docupdater = True
                     break
-        if docupdater:
-            return True
-        return False
+        return bool(docupdater)
 
     def has_new_version(self):
         self.config = Config.from_labels(self.config, self.container.labels)
@@ -186,7 +179,7 @@ class Container(AbstractObject):
 
     def remove(self):
         self.logger.debug('Removing container: %s', self.container.name)
-        if not self.container.attrs.get('HostConfig', dict()).get('AutoRemove'):
+        if not self.container.attrs.get('HostConfig', {}).get('AutoRemove'):
             try:
                 self.container.remove()
             except NotFound as e:
@@ -260,9 +253,7 @@ class Service(AbstractObject):
         tag = self.service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image'].split(":", 1)
         if len(tag) == 2:
             tag = tag[1]
-            sha = ""
-            if ":" in tag and "@" in tag:
-                sha = tag.split("@")[1]
+            sha = tag.split("@")[1] if ":" in tag and "@" in tag else ""
             return remove_sha_prefix(sha)
         return ""  # Empty, force to update this service for next time
 
@@ -277,7 +268,9 @@ class Service(AbstractObject):
         return (self._latest_sha or "")[:10]
 
     def has_new_version(self):
-        self.config = Config.from_labels(self.config, self.service.attrs.get('Spec', dict()).get('Labels'))
+        self.config = Config.from_labels(
+            self.config, self.service.attrs.get('Spec', {}).get('Labels')
+        )
 
         current_image_name = self.get_image_name()
         current_tag = self.get_tag()
